@@ -1,0 +1,109 @@
+import Link from "next/link";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import LogoutButton from "@/components/admin/LogoutButton";
+import Logo from "@/components/Logo";
+import type { LeadRecord } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("nb-NO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+export default async function AdminPage() {
+  const { data, error } = await supabaseAdmin
+    .from("leads")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const leads = (data ?? []) as LeadRecord[];
+
+  return (
+    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex items-center justify-between">
+          <Logo />
+          <LogoutButton />
+        </div>
+
+        <div className="mb-4 flex items-baseline justify-between">
+          <h1 className="text-2xl font-bold text-slate-900">Leads</h1>
+          <span className="text-sm text-slate-500">{leads.length} totalt</span>
+        </div>
+
+        {error && (
+          <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+            Feil ved henting: {error.message}
+          </p>
+        )}
+
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full min-w-[860px] text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">Mottatt</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Firma</th>
+                <th className="px-4 py-3 font-medium">Kontakt</th>
+                <th className="px-4 py-3 font-medium">Vurdering</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map((lead) => {
+                const flags = lead.research?.summary?.flags ?? [];
+                const topFlag = flags.find((f) => f.startsWith("🔴")) ?? flags[0];
+                return (
+                  <tr
+                    key={lead.session_id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                  >
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                      {formatDate(lead.created_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          lead.status === "completed"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {lead.status === "completed" ? "Fullført" : "Pågår"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/leads/${lead.session_id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {lead.company_name || "Ukjent firma"}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-slate-900">{lead.contact_name || "—"}</div>
+                      <div className="text-slate-400">{lead.contact_email || ""}</div>
+                    </td>
+                    <td className="max-w-[280px] px-4 py-3 text-slate-600">
+                      {topFlag ?? "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+              {leads.length === 0 && !error && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                    Ingen leads ennå.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  );
+}

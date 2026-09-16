@@ -1,5 +1,10 @@
 export type LeadStatus = "in_progress" | "completed";
 
+export interface LeadResearch {
+  brreg: import("./brreg").BrregData | null;
+  summary: import("./lead-summary").LeadSummary;
+}
+
 /** Mirrors the public.leads table schema in Supabase. */
 export interface LeadRecord {
   id?: string;
@@ -27,7 +32,7 @@ export interface LeadRecord {
   consent_given?: boolean | null;
   consent_at?: string | null;
   free_text_note?: string | null;
-  research?: Record<string, unknown> | null;
+  research?: LeadResearch | null;
   research_completed_at?: string | null;
   created_at?: string;
   updated_at?: string;
