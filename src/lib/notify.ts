@@ -13,7 +13,11 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
-function renderEmailHtml(lead: LeadRecord, summary: LeadSummary): string {
+function renderEmailHtml(
+  lead: LeadRecord,
+  summary: LeadSummary,
+  aiHealthCheck: string | null
+): string {
   const flagsHtml = summary.flags.map((f) => `<li>${escapeHtml(f)}</li>`).join("");
   const factsHtml = summary.facts.map((f) => `<li>${escapeHtml(f)}</li>`).join("");
 
@@ -30,6 +34,11 @@ function renderEmailHtml(lead: LeadRecord, summary: LeadSummary): string {
         ${lead.contact_phone ? escapeHtml(lead.contact_phone) : ""}
       </p>
       ${flagsHtml ? `<h3>Vurdering</h3><ul>${flagsHtml}</ul>` : ""}
+      ${
+        aiHealthCheck
+          ? `<h3>Kreditt-helsesjekk (AI)</h3><p>${escapeHtml(aiHealthCheck).replace(/\n/g, "<br/>")}</p>`
+          : ""
+      }
       ${factsHtml ? `<h3>Svar fra quiz</h3><ul>${factsHtml}</ul>` : ""}
       <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">
         Session ${escapeHtml(lead.session_id)} · ${escapeHtml(summary.generatedAt)}
@@ -42,7 +51,11 @@ function renderEmailHtml(lead: LeadRecord, summary: LeadSummary): string {
  * Sends the internal "new lead" notification. Never throws — a failed email
  * must not affect whether the lead's own submission is treated as successful.
  */
-export async function sendLeadNotification(lead: LeadRecord, summary: LeadSummary) {
+export async function sendLeadNotification(
+  lead: LeadRecord,
+  summary: LeadSummary,
+  aiHealthCheck: string | null = null
+) {
   if (!resendApiKey || !notifyEmail) return;
 
   try {
@@ -51,7 +64,7 @@ export async function sendLeadNotification(lead: LeadRecord, summary: LeadSummar
       from: "Factoring Finans <onboarding@resend.dev>",
       to: notifyEmail,
       subject: `${summary.headline}: ${lead.company_name ?? lead.contact_name ?? "Ny lead"}`,
-      html: renderEmailHtml(lead, summary),
+      html: renderEmailHtml(lead, summary, aiHealthCheck),
     });
   } catch (err) {
     console.error("Failed to send lead notification email", err);

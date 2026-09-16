@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { lookupBrreg } from "@/lib/brreg";
 import { buildLeadSummary } from "@/lib/lead-summary";
+import { runAiHealthCheck } from "@/lib/ai-research";
 import { sendLeadNotification } from "@/lib/notify";
 import type { LeadAnswers, LeadRecord } from "@/lib/types";
 
@@ -89,7 +90,10 @@ export async function POST(request: NextRequest) {
   const lead = data as LeadRecord;
 
   if (fields.status === "completed") {
-    await enrichAndNotify(lead);
+    // Runs after the response is already sent — the AI health check involves
+    // a web search and can take several seconds; the visitor shouldn't wait
+    // on it to see their "Takk" screen.
+    after(() => enrichAndNotify(lead));
   }
 
   return NextResponse.json({ lead });
@@ -97,25 +101,26 @@ export async function POST(request: NextRequest) {
 
 /**
  * Runs once, when a lead is marked completed: looks up the org number in
- * Brønnøysundregisteret, builds a rule-based summary, saves it to the
- * `research` column, and emails the internal notification. Never lets a
- * failure here affect the lead save itself — the visitor already got their
- * "Takk" screen by the time this matters.
+ * Brønnøysundregisteret, builds a rule-based summary, asks Claude to search
+ * the web for a financial health check, saves it all to the `research`
+ * column, and emails the internal notification. Never lets a failure here
+ * affect the lead save itself.
  */
 async function enrichAndNotify(lead: LeadRecord) {
   try {
     const brreg = lead.org_number ? await lookupBrreg(lead.org_number) : null;
     const summary = buildLeadSummary(lead, brreg);
+    const aiHealthCheck = await runAiHealthCheck(lead, brreg, summary);
 
     await supabaseAdmin
       .from("leads")
       .update({
-        research: { brreg, summary },
+        research: { brreg, summary, aiHealthCheck },
         research_completed_at: new Date().toISOString(),
       })
       .eq("session_id", lead.session_id);
 
-    await sendLeadNotification(lead, summary);
+    await sendLeadNotification(lead, summary, aiHealthCheck);
   } catch (err) {
     console.error("Lead enrichment/notification failed", err);
   }

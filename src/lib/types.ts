@@ -3,6 +3,7 @@ export type LeadStatus = "in_progress" | "completed";
 export interface LeadResearch {
   brreg: import("./brreg").BrregData | null;
   summary: import("./lead-summary").LeadSummary;
+  aiHealthCheck?: string | null;
 }
 
 /** Mirrors the public.leads table schema in Supabase. */
