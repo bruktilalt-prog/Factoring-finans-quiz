@@ -27,6 +27,8 @@ export interface LeadRecord {
   consent_given?: boolean | null;
   consent_at?: string | null;
   free_text_note?: string | null;
+  research?: Record<string, unknown> | null;
+  research_completed_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }

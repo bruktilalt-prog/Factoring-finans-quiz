@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { lookupBrreg } from "@/lib/brreg";
+import { buildLeadSummary } from "@/lib/lead-summary";
+import { sendLeadNotification } from "@/lib/notify";
 import type { LeadAnswers, LeadRecord } from "@/lib/types";
 
 const WRITABLE_FIELDS: (keyof LeadAnswers)[] = [
@@ -83,5 +86,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ lead: data as LeadRecord });
+  const lead = data as LeadRecord;
+
+  if (fields.status === "completed") {
+    await enrichAndNotify(lead);
+  }
+
+  return NextResponse.json({ lead });
+}
+
+/**
+ * Runs once, when a lead is marked completed: looks up the org number in
+ * Brønnøysundregisteret, builds a rule-based summary, saves it to the
+ * `research` column, and emails the internal notification. Never lets a
+ * failure here affect the lead save itself — the visitor already got their
+ * "Takk" screen by the time this matters.
+ */
+async function enrichAndNotify(lead: LeadRecord) {
+  try {
+    const brreg = lead.org_number ? await lookupBrreg(lead.org_number) : null;
+    const summary = buildLeadSummary(lead, brreg);
+
+    await supabaseAdmin
+      .from("leads")
+      .update({
+        research: { brreg, summary },
+        research_completed_at: new Date().toISOString(),
+      })
+      .eq("session_id", lead.session_id);
+
+    await sendLeadNotification(lead, summary);
+  } catch (err) {
+    console.error("Lead enrichment/notification failed", err);
+  }
 }
