@@ -1,4 +1,4 @@
-const SESSION_STORAGE_KEY = "factoring-quiz-session-id";
+export const SESSION_STORAGE_KEY = "factoring-quiz-session-id";
 
 function generateId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

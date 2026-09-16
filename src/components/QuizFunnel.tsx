@@ -7,7 +7,7 @@ import MultiChoiceStep from "@/components/steps/MultiChoiceStep";
 import ContactFormStep, { ContactFormValues } from "@/components/steps/ContactFormStep";
 import MeetingTimeStep from "@/components/steps/MeetingTimeStep";
 import { QUIZ_STEPS, TOTAL_STEPS } from "@/lib/quiz-config";
-import { getOrCreateSessionId, getUtmParams } from "@/lib/session";
+import { getOrCreateSessionId, getUtmParams, SESSION_STORAGE_KEY } from "@/lib/session";
 import type { LeadAnswers, LeadRecord } from "@/lib/types";
 
 type Phase = "loading" | "in-progress" | "submitting" | "done";
@@ -200,6 +200,16 @@ export default function QuizFunnel() {
           Vi tar kontakt med et uforpliktende tilbud på factoring så snart vi har sett gjennom
           opplysningene.
         </p>
+        <button
+          type="button"
+          onClick={() => {
+            window.localStorage.removeItem(SESSION_STORAGE_KEY);
+            window.location.reload();
+          }}
+          className="mt-6 text-sm font-medium text-slate-400 hover:text-slate-600"
+        >
+          Start på nytt
+        </button>
       </div>
     );
   }
