@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { buildLeadSummary } from "@/lib/lead-summary";
 import type { LeadRecord } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,12 @@ export default async function LeadDetailPage({
   if (!data) notFound();
   const lead = data as LeadRecord;
   const research = lead.research;
+
+  // Computed live from whatever fields are filled in so far — not only for
+  // completed leads. This is what the visitor has actually answered, with
+  // human-readable labels, regardless of whether the enrichment pipeline
+  // (which only runs on completion) has ever touched this row.
+  const liveSummary = buildLeadSummary(lead, research?.brreg ?? null);
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-8">
@@ -74,6 +81,7 @@ export default async function LeadDetailPage({
                 ) : null
               }
             />
+            <Row label="Firmanavn" value={lead.company_name} />
             <Row label="Org.nr" value={lead.org_number} />
             {lead.preferred_meeting_at && (
               <Row label="Ønsket møtetidspunkt" value={formatDate(lead.preferred_meeting_at)} />
@@ -81,45 +89,73 @@ export default async function LeadDetailPage({
           </dl>
         </section>
 
-        {research ? (
+        {research?.brreg && (
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
-            <h2 className="font-semibold text-slate-900">{research.summary.headline}</h2>
+            <h2 className="font-semibold text-slate-900">Firmainfo (Brønnøysundregisteret)</h2>
+            <dl className="mt-3 space-y-1.5 text-sm">
+              <Row label="Organisasjonsform" value={research.brreg.organisasjonsform} />
+              <Row label="Bransje" value={research.brreg.naeringskode} />
+              <Row label="Stiftet" value={research.brreg.stiftelsesdato} />
+              <Row label="Antall ansatte" value={research.brreg.antallAnsatte ?? null} />
+              <Row label="Adresse" value={research.brreg.forretningsadresse} />
+              {(research.brreg.konkurs || research.brreg.underAvvikling) && (
+                <Row
+                  label="Status"
+                  value={
+                    <span className="font-medium text-red-600">
+                      {[research.brreg.konkurs && "Konkurs", research.brreg.underAvvikling && "Under avvikling"]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </span>
+                  }
+                />
+              )}
+            </dl>
+          </section>
+        )}
 
-            {research.summary.flags.length > 0 && (
-              <ul className="mt-3 space-y-1.5 text-sm">
-                {research.summary.flags.map((flag, i) => (
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="font-semibold text-slate-900">{liveSummary.headline}</h2>
+
+          {liveSummary.flags.length > 0 && (
+            <>
+              <h3 className="mt-3 text-sm font-medium text-slate-700">Vurdering</h3>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {liveSummary.flags.map((flag, i) => (
                   <li key={i}>{flag}</li>
                 ))}
               </ul>
-            )}
+            </>
+          )}
 
-            {research.aiHealthCheck && (
-              <>
-                <h3 className="mt-5 text-sm font-medium text-slate-700">Kreditt-helsesjekk (AI)</h3>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
-                  {research.aiHealthCheck}
-                </p>
-              </>
-            )}
+          {research?.aiHealthCheck && (
+            <>
+              <h3 className="mt-5 text-sm font-medium text-slate-700">Kreditt-helsesjekk (AI)</h3>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
+                {research.aiHealthCheck}
+              </p>
+            </>
+          )}
 
-            {research.summary.facts.length > 0 && (
-              <>
-                <h3 className="mt-5 text-sm font-medium text-slate-700">Svar fra quiz</h3>
-                <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
-                  {research.summary.facts.map((fact, i) => (
-                    <li key={i}>{fact}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </section>
-        ) : (
-          <p className="mt-6 text-sm text-slate-400">
-            {lead.status === "completed"
-              ? "Ingen analyse lagret ennå."
-              : "Ikke fullført av besøkende ennå — ingen analyse tilgjengelig."}
-          </p>
-        )}
+          {liveSummary.facts.length > 0 ? (
+            <>
+              <h3 className="mt-5 text-sm font-medium text-slate-700">Svar fra quiz</h3>
+              <ul className="mt-2 space-y-1.5 text-sm text-slate-600">
+                {liveSummary.facts.map((fact, i) => (
+                  <li key={i}>{fact}</li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="mt-3 text-sm text-slate-400">Ingen spørsmål besvart ennå.</p>
+          )}
+
+          {!research && lead.status !== "completed" && (
+            <p className="mt-4 text-xs text-slate-400">
+              Fullføres quizen vil et Brreg-oppslag og en AI-helsesjekk legges til her automatisk.
+            </p>
+          )}
+        </section>
 
         {lead.free_text_note && (
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
@@ -127,6 +163,29 @@ export default async function LeadDetailPage({
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{lead.free_text_note}</p>
           </section>
         )}
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 className="font-semibold text-slate-900">Metadata</h2>
+          <dl className="mt-3 space-y-1.5 text-sm">
+            <Row label="Session-ID" value={<code className="text-xs">{lead.session_id}</code>} />
+            <Row label="Sist oppdatert" value={formatDate(lead.updated_at)} />
+            <Row
+              label="Kilde (UTM)"
+              value={
+                [lead.utm_source, lead.utm_medium, lead.utm_campaign].filter(Boolean).join(" / ") ||
+                null
+              }
+            />
+            <Row
+              label="Samtykke"
+              value={
+                lead.consent_given
+                  ? `Ja${lead.consent_at ? ` (${formatDate(lead.consent_at)})` : ""}`
+                  : "Nei"
+              }
+            />
+          </dl>
+        </section>
       </div>
     </main>
   );
