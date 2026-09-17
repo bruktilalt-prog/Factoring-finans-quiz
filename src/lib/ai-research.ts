@@ -93,10 +93,15 @@ export async function runAiHealthCheck(
       .filter((block): block is Anthropic.TextBlock => block.type === "text")
       .map((block) => block.text.trim())
       .filter((line) => line.length > 0 && !(line.length < 120 && NARRATION_PATTERN.test(line)))
-      .join("\n\n")
-      // Collapse mid-paragraph line breaks (from source pages/citations bleeding
-      // through) into spaces, but keep genuine blank-line paragraph breaks.
+      // Join with a space, not a paragraph break: citations often land as
+      // their own separate text block mid-sentence, so treating every block
+      // boundary as a new paragraph fragments normal sentences. Genuine
+      // section breaks survive because the model puts its own blank line
+      // *inside* a block (per the prompt's "blank linje mellom hvert").
+      .join(" ")
       .replace(/([^\n])\n(?!\n)([^\n])/g, "$1 $2")
+      .replace(/[ \t]+([,.;:)])/g, "$1")
+      .replace(/[ \t]{2,}/g, " ")
       .trim();
 
     if (text.length === 0) {
