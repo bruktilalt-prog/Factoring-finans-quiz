@@ -110,17 +110,24 @@ async function enrichAndNotify(lead: LeadRecord) {
   try {
     const brreg = lead.org_number ? await lookupBrreg(lead.org_number) : null;
     const summary = buildLeadSummary(lead, brreg);
-    const aiHealthCheck = await runAiHealthCheck(lead, brreg, summary);
+    const aiResult = await runAiHealthCheck(lead, brreg, summary);
+
+    // Quick economic flags from the AI check ride alongside the quiz-based
+    // ones under "Vurdering" — same array, same rendering, no separate UI.
+    const combinedSummary = {
+      ...summary,
+      flags: [...summary.flags, ...(aiResult?.flags ?? [])],
+    };
 
     await supabaseAdmin
       .from("leads")
       .update({
-        research: { brreg, summary, aiHealthCheck },
+        research: { brreg, summary: combinedSummary, aiHealthCheck: aiResult?.analysis ?? null },
         research_completed_at: new Date().toISOString(),
       })
       .eq("session_id", lead.session_id);
 
-    await sendLeadNotification(lead, summary, aiHealthCheck);
+    await sendLeadNotification(lead, combinedSummary, aiResult?.analysis ?? null);
   } catch (err) {
     console.error("Lead enrichment/notification failed", err);
   }

@@ -2,6 +2,8 @@ export type LeadStatus = "in_progress" | "completed";
 
 export interface LeadResearch {
   brreg: import("./brreg").BrregData | null;
+  /** flags here already includes the AI health check's short economic
+   *  flags merged in alongside the quiz-based ones — see route.ts. */
   summary: import("./lead-summary").LeadSummary;
   aiHealthCheck?: string | null;
 }

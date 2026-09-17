@@ -34,6 +34,12 @@ export default async function LeadDetailPage({
   // (which only runs on completion) has ever touched this row.
   const liveSummary = buildLeadSummary(lead, research?.brreg ?? null);
 
+  // The stored flags (when research exists) include the AI health check's
+  // quick economic flags merged in — prefer those over the live ones, which
+  // only know about quiz answers. Facts don't change either way, so those
+  // stay live.
+  const flags = research?.summary.flags ?? liveSummary.flags;
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-2xl">
@@ -117,11 +123,11 @@ export default async function LeadDetailPage({
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
           <h2 className="font-semibold text-slate-900">{liveSummary.headline}</h2>
 
-          {liveSummary.flags.length > 0 && (
+          {flags.length > 0 && (
             <>
               <h3 className="mt-3 text-sm font-medium text-slate-700">Vurdering</h3>
               <ul className="mt-2 space-y-1.5 text-sm">
-                {liveSummary.flags.map((flag, i) => (
+                {flags.map((flag, i) => (
                   <li key={i}>{flag}</li>
                 ))}
               </ul>
