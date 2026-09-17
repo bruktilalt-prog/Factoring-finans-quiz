@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { buildLeadSummary } from "@/lib/lead-summary";
-import type { LeadRecord } from "@/lib/types";
+import LeadActions from "@/components/admin/LeadActions";
+import { HANDLING_STATUS_LABELS, type LeadRecord, type Seller } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,12 @@ export default async function LeadDetailPage({
   const lead = data as LeadRecord;
   const research = lead.research;
 
+  const { data: sellersData } = await supabaseAdmin
+    .from("sellers")
+    .select("*")
+    .order("name", { ascending: true });
+  const sellers = (sellersData ?? []) as Seller[];
+
   // Computed live from whatever fields are filled in so far — not only for
   // completed leads. This is what the visitor has actually answered, with
   // human-readable labels, regardless of whether the enrichment pipeline
@@ -51,17 +58,29 @@ export default async function LeadDetailPage({
           <h1 className="text-2xl font-bold text-slate-900">
             {lead.company_name || lead.contact_name || "Ukjent lead"}
           </h1>
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-              lead.status === "completed"
-                ? "bg-green-100 text-green-700"
-                : "bg-amber-100 text-amber-700"
-            }`}
-          >
-            {lead.status === "completed" ? "Fullført" : "Pågår"}
-          </span>
+          <div className="flex shrink-0 gap-2">
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                lead.status === "completed"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-amber-100 text-amber-700"
+              }`}
+            >
+              {lead.status === "completed" ? "Fullført" : "Pågår"}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+              {HANDLING_STATUS_LABELS[lead.handling_status ?? "new"]}
+            </span>
+          </div>
         </div>
         <p className="text-sm text-slate-500">Mottatt {formatDate(lead.created_at)}</p>
+
+        <LeadActions
+          sessionId={lead.session_id}
+          handlingStatus={lead.handling_status ?? "new"}
+          assignedTo={lead.assigned_to ?? null}
+          sellers={sellers}
+        />
 
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
           <h2 className="font-semibold text-slate-900">Kontakt</h2>

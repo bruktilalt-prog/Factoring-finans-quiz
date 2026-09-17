@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import LogoutButton from "@/components/admin/LogoutButton";
 import Logo from "@/components/Logo";
-import type { LeadRecord } from "@/lib/types";
+import { HANDLING_STATUS_LABELS, type LeadRecord, type Seller } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +33,9 @@ export default async function AdminPage() {
 
   const leads = (data ?? []) as LeadRecord[];
 
+  const { data: sellersData } = await supabaseAdmin.from("sellers").select("id, name");
+  const sellerNames = new Map((sellersData ?? []).map((s: Pick<Seller, "id" | "name">) => [s.id, s.name]));
+
   const stats = {
     total: leads.length,
     completedThisWeek: leads.filter((l) => l.status === "completed" && isThisWeek(l.updated_at))
@@ -46,7 +49,12 @@ export default async function AdminPage() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <Logo />
-          <LogoutButton />
+          <div className="flex items-center gap-4">
+            <Link href="/admin/selgere" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+              Selgere
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
 
         <h1 className="mb-4 text-2xl font-bold text-slate-900">Leads</h1>
@@ -72,6 +80,7 @@ export default async function AdminPage() {
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Firma</th>
                 <th className="px-4 py-3 font-medium">Kontakt</th>
+                <th className="px-4 py-3 font-medium">Tildelt</th>
                 <th className="px-4 py-3 font-medium">Vurdering</th>
               </tr>
             </thead>
@@ -88,15 +97,20 @@ export default async function AdminPage() {
                       {formatDate(lead.created_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                          lead.status === "completed"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {lead.status === "completed" ? "Fullført" : "Pågår"}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                            lead.status === "completed"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {lead.status === "completed" ? "Fullført" : "Pågår"}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                          {HANDLING_STATUS_LABELS[lead.handling_status ?? "new"]}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -110,6 +124,9 @@ export default async function AdminPage() {
                       <div className="text-slate-900">{lead.contact_name || "—"}</div>
                       <div className="text-slate-400">{lead.contact_email || ""}</div>
                     </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {lead.assigned_to ? (sellerNames.get(lead.assigned_to) ?? "Ukjent") : "—"}
+                    </td>
                     <td className="max-w-[280px] px-4 py-3 text-slate-600">
                       {topFlag ?? "—"}
                     </td>
@@ -118,7 +135,7 @@ export default async function AdminPage() {
               })}
               {leads.length === 0 && !error && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
                     Ingen leads ennå.
                   </td>
                 </tr>

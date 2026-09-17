@@ -1,10 +1,11 @@
 import "server-only";
 import { Resend } from "resend";
-import type { LeadRecord } from "./types";
+import type { LeadRecord, Seller } from "./types";
 import type { LeadSummary } from "./lead-summary";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const notifyEmail = process.env.NOTIFY_EMAIL;
+const siteUrl = process.env.SITE_URL;
 
 function escapeHtml(value: string): string {
   return value
@@ -68,5 +69,41 @@ export async function sendLeadNotification(
     });
   } catch (err) {
     console.error("Failed to send lead notification email", err);
+  }
+}
+
+/**
+ * Sent when a lead is (manually or, later, automatically) delegated to a
+ * seller. Never throws — same reasoning as sendLeadNotification.
+ */
+export async function sendAssignmentNotification(lead: LeadRecord, seller: Seller) {
+  if (!resendApiKey) return;
+
+  const link = siteUrl ? `${siteUrl}/admin/leads/${lead.session_id}` : null;
+
+  try {
+    const resend = new Resend(resendApiKey);
+    await resend.emails.send({
+      from: "Factoring Finans <onboarding@resend.dev>",
+      to: seller.email,
+      subject: `Ny lead tildelt: ${lead.company_name ?? lead.contact_name ?? "Ukjent firma"}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 560px;">
+          <h2>Du har fått en ny lead</h2>
+          <p>
+            <strong>${escapeHtml(lead.company_name ?? "Ukjent firma")}</strong>
+            ${lead.org_number ? ` (org.nr ${escapeHtml(lead.org_number)})` : ""}
+          </p>
+          <p>
+            ${escapeHtml(lead.contact_name ?? "")}<br/>
+            ${lead.contact_email ? `<a href="mailto:${escapeHtml(lead.contact_email)}">${escapeHtml(lead.contact_email)}</a><br/>` : ""}
+            ${lead.contact_phone ? escapeHtml(lead.contact_phone) : ""}
+          </p>
+          ${link ? `<p><a href="${link}">Åpne leaden i admin →</a></p>` : ""}
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send assignment notification email", err);
   }
 }

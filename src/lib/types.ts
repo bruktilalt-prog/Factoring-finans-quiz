@@ -1,5 +1,23 @@
 export type LeadStatus = "in_progress" | "completed";
 
+/** Sales workflow status — separate from `status`, which only tracks quiz completion. */
+export type HandlingStatus = "new" | "contacted" | "won" | "lost";
+
+export const HANDLING_STATUS_LABELS: Record<HandlingStatus, string> = {
+  new: "Ny",
+  contacted: "Kontaktet",
+  won: "Vunnet",
+  lost: "Tapt",
+};
+
+export interface Seller {
+  id: string;
+  name: string;
+  email: string;
+  territories: string[];
+  created_at?: string;
+}
+
 export interface LeadResearch {
   brreg: import("./brreg").BrregData | null;
   /** flags here already includes the AI health check's short economic
@@ -37,6 +55,8 @@ export interface LeadRecord {
   free_text_note?: string | null;
   research?: LeadResearch | null;
   research_completed_at?: string | null;
+  handling_status?: HandlingStatus;
+  assigned_to?: string | null;
   created_at?: string;
   updated_at?: string;
 }
