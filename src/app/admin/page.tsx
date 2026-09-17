@@ -14,6 +14,17 @@ function formatDate(iso?: string | null): string {
   });
 }
 
+function isThisWeek(iso?: string | null): boolean {
+  if (!iso) return false;
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  return new Date(iso) >= weekAgo;
+}
+
+function needsFollowUp(lead: LeadRecord): boolean {
+  return (lead.research?.summary?.flags ?? []).some((f) => f.startsWith("🔴"));
+}
+
 export default async function AdminPage() {
   const { data, error } = await supabaseAdmin
     .from("leads")
@@ -21,6 +32,14 @@ export default async function AdminPage() {
     .order("created_at", { ascending: false });
 
   const leads = (data ?? []) as LeadRecord[];
+
+  const stats = {
+    total: leads.length,
+    completedThisWeek: leads.filter((l) => l.status === "completed" && isThisWeek(l.updated_at))
+      .length,
+    needsFollowUp: leads.filter(needsFollowUp).length,
+    inProgress: leads.filter((l) => l.status !== "completed").length,
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-8">
@@ -30,9 +49,13 @@ export default async function AdminPage() {
           <LogoutButton />
         </div>
 
-        <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">Leads</h1>
-          <span className="text-sm text-slate-500">{leads.length} totalt</span>
+        <h1 className="mb-4 text-2xl font-bold text-slate-900">Leads</h1>
+
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatCard label="Totalt" value={stats.total} />
+          <StatCard label="Fullført denne uken" value={stats.completedThisWeek} accent="green" />
+          <StatCard label="Krever oppfølging" value={stats.needsFollowUp} accent="red" />
+          <StatCard label="Pågår" value={stats.inProgress} accent="amber" />
         </div>
 
         {error && (
@@ -105,5 +128,31 @@ export default async function AdminPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: "green" | "red" | "amber";
+}) {
+  const valueColor =
+    accent === "green"
+      ? "text-green-600"
+      : accent === "red"
+        ? "text-red-600"
+        : accent === "amber"
+          ? "text-amber-600"
+          : "text-slate-900";
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <p className={`text-2xl font-bold tabular-nums ${valueColor}`}>{value}</p>
+      <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
+    </div>
   );
 }
