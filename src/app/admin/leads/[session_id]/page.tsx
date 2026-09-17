@@ -155,7 +155,7 @@ export default async function LeadDetailPage({
 
           {research?.aiHealthCheck && (
             <>
-              <h3 className="mt-5 text-sm font-medium text-slate-700">Kreditt-helsesjekk (AI)</h3>
+              <h3 className="mt-5 text-sm font-medium text-slate-700">Kreditt-helsesjekk</h3>
               <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">
                 {research.aiHealthCheck}
               </p>

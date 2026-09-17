@@ -54,7 +54,7 @@ function renderEmailHtml(
       ${flagsHtml ? `<h3>Vurdering</h3><ul>${flagsHtml}</ul>` : ""}
       ${
         aiHealthCheck
-          ? `<h3>Kreditt-helsesjekk (AI)</h3><p>${escapeHtml(aiHealthCheck).replace(/\n/g, "<br/>")}</p>`
+          ? `<h3>Kreditt-helsesjekk</h3><p>${escapeHtml(aiHealthCheck).replace(/\n/g, "<br/>")}</p>`
           : ""
       }
       ${factsHtml ? `<h3>Svar fra quiz</h3><ul>${factsHtml}</ul>` : ""}

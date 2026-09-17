@@ -22,7 +22,7 @@ function isThisWeek(iso?: string | null): boolean {
 }
 
 function needsFollowUp(lead: LeadRecord): boolean {
-  return (lead.research?.summary?.flags ?? []).some((f) => f.startsWith("🔴"));
+  return (lead.research?.summary?.flags ?? []).some((f) => f.startsWith("🚩"));
 }
 
 export default async function AdminPage() {
@@ -87,7 +87,7 @@ export default async function AdminPage() {
             <tbody>
               {leads.map((lead) => {
                 const flags = lead.research?.summary?.flags ?? [];
-                const topFlag = flags.find((f) => f.startsWith("🔴")) ?? flags[0];
+                const topFlag = flags.find((f) => f.startsWith("🚩")) ?? flags[0];
                 return (
                   <tr
                     key={lead.session_id}

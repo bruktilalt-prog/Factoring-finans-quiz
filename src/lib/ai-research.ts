@@ -30,17 +30,17 @@ ${ruleSummary.flags.join("\n") || "Ingen"}
 
 Gjør en kredittanalyse av dette firmaet for et factoringselskap som vurderer å inngå avtale med dem. Søk opp regnskapstall på proff.no, purehelp.no eller lignende. Skriv svaret som separate, klart merkede avsnitt (blank linje mellom hvert, ingen markdown-stjerner, kort ord/frase + kolon som start på hvert avsnitt), i denne rekkefølgen:
 
-0. "Hurtigflagg:" — 2-4 korte linjer (hver på egen linje) som oppsummerer de VIKTIGSTE økonomiske funnene, i samme stil som disse eksemplene: "🔴 Egenkapitalandel falt til 6,8 % i 2025" / "🟡 Omsetning svingende, ingen klar trend" / "🟢 Jevn vekst i driftsinntekter siste 3 år" / "ℹ️ Fant ingen regnskapstall nyere enn 2023". Start hver linje med nøyaktig ett av emojiene 🔴 (alvorlig bekymring), 🟡 (noe å følge med på), 🟢 (positivt), eller ℹ️ (nøytral info/usikkerhet). Hver linje maks ca. 12 ord — dette er hurtigoversikt, ikke forklaring (forklaringen kommer i avsnittene under).
+0. "Hurtigflagg:" — 2-4 korte linjer (hver på egen linje) som oppsummerer de VIKTIGSTE økonomiske funnene, i samme stil som disse eksemplene: "🚩 Egenkapitalandel falt til 6,8 % i 2025" / "▲ Omsetning svingende, ingen klar trend" / "✓ Jevn vekst i driftsinntekter siste 3 år" / "• Fant ingen regnskapstall nyere enn 2023". Start hver linje med nøyaktig ett av tegnene 🚩 (alvorlig bekymring), ▲ (noe å følge med på), ✓ (positivt), eller • (nøytral info/usikkerhet). Hver linje maks ca. 12 ord — dette er hurtigoversikt, ikke forklaring (forklaringen kommer i avsnittene under).
 1. "Omsetning og resultat:" — driftsinntekter og driftsresultat for så mange av de siste 3-5 regnskapsårene du finner, år for år. Vurder om trenden er vekst, nedgang eller stabil. Oppgi alltid hvilke år tallene gjelder.
 2. "Gjeldsgrad:" — gjeldsgrad/soliditet hvis du finner det (f.eks. egenkapitalandel). Si "ikke funnet" hvis du ikke finner det, ikke gjett.
 3. "Kundefordringer:" — størrelse på kundefordringer i regnskapet hvis oppgitt på proff.no eller lignende, og hva det eventuelt sier om fakturavolumet sammenlignet med det de selv oppga i søknaden.
 4. "Samsvar med søknaden:" — stemmer det du fant (omsetning, størrelse, bransje) overens med det firmaet selv oppga i quizen (fakturavolum, kundetype, osv.)? Flagg eventuelle avvik eksplisitt som konkrete spørsmål selgeren bør stille i møte med kunden — ikke bare "sjekk dette", men formuler det som et spørsmål å stille.
 5. "Konklusjon:" — 2-3 setninger, rett på sak: er dette en solid kunde for factoring eller ikke, og hvorfor.
 
-Prioriter det NYESTE regnskapsåret du finner treff på — sidene du henter kan vise eldre, cachede tall enn det som faktisk ligger ute, så nevn alltid eksplisitt hvilket år/periode tallene er fra. Hvis du ikke finner regnskapstall i det hele tatt, si det kort under "Hurtigflagg:" (med ℹ️) og "Omsetning og resultat:" i stedet for å gjette, men fyll fortsatt ut de andre avsnittene basert på det du har. Skriv på norsk, konsist og rett på sak — dette skal leses av travle folk i et salgsmøte, ikke være en lang rapport.`;
+Prioriter det NYESTE regnskapsåret du finner treff på — sidene du henter kan vise eldre, cachede tall enn det som faktisk ligger ute, så nevn alltid eksplisitt hvilket år/periode tallene er fra. Hvis du ikke finner regnskapstall i det hele tatt, si det kort under "Hurtigflagg:" (med •) og "Omsetning og resultat:" i stedet for å gjette, men fyll fortsatt ut de andre avsnittene basert på det du har. Skriv på norsk, konsist og rett på sak — dette skal leses av travle folk i et salgsmøte, ikke være en lang rapport.`;
 }
 
-const FLAG_EMOJI = "🔴🟡🟢ℹ️";
+const FLAG_EMOJI = "🚩▲✓•";
 const FLAG_LINE_PATTERN = new RegExp(`[${FLAG_EMOJI}][^${FLAG_EMOJI}]*`, "gu");
 
 /** Pulls the "Hurtigflagg:" section out of the raw response text and splits
