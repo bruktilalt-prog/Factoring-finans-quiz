@@ -7,8 +7,13 @@ import type { LeadSummary } from "./lead-summary";
 const apiKey = process.env.ANTHROPIC_API_KEY;
 
 function buildPrompt(lead: LeadRecord, brreg: BrregData | null, ruleSummary: LeadSummary): string {
+  const orgNumberGivenByLead = Boolean(lead.org_number);
+  const resolvedOrgNumber = brreg?.organisasjonsnummer ?? lead.org_number ?? null;
+
   const brregBlock = brreg
-    ? `Offisiell info fra Brønnøysundregisteret:
+    ? `Offisiell info fra Brønnøysundregisteret (org.nr ${brreg.organisasjonsnummer}${
+        orgNumberGivenByLead ? ", oppgitt av kunden" : ", IKKE oppgitt av kunden — funnet via navnesøk, bekreft at dette faktisk er riktig selskap før du stoler på tallene"
+      }):
 - Organisasjonsform: ${brreg.organisasjonsform ?? "ukjent"}
 - Bransje: ${brreg.naeringskode ?? "ukjent"}
 - Stiftet: ${brreg.stiftelsesdato ?? "ukjent"}
@@ -16,9 +21,11 @@ function buildPrompt(lead: LeadRecord, brreg: BrregData | null, ruleSummary: Lea
 - Adresse: ${brreg.forretningsadresse ?? "ukjent"}
 - Konkurs: ${brreg.konkurs ? "JA" : "nei"}
 - Under avvikling: ${brreg.underAvvikling ? "JA" : "nei"}`
-    : "Fant ingen treff i Brønnøysundregisteret på oppgitt org.nr.";
+    : orgNumberGivenByLead
+      ? "Fant ingen treff i Brønnøysundregisteret på oppgitt org.nr."
+      : "Kunden oppga ikke org.nr, og et navnesøk i Brønnøysundregisteret ga ingen sikre treff. Identifiser selskapet selv via nettsøk på firmanavnet (kombinert med bransje/sted under om det hjelper), og vær tydelig i Hurtigflagg/Samsvar-avsnittene dersom du er usikker på at du har funnet riktig selskap.";
 
-  return `Firma: ${lead.company_name ?? "ukjent"} (org.nr ${lead.org_number ?? "ukjent"})
+  return `Firma: ${lead.company_name ?? "ukjent"} (org.nr ${resolvedOrgNumber ?? "ikke oppgitt av kunden"})
 
 ${brregBlock}
 
@@ -28,7 +35,7 @@ ${ruleSummary.facts.join("\n") || "Ingen"}
 Allerede beregnede observasjoner fra svarene (ikke gjenta disse ordrett):
 ${ruleSummary.flags.join("\n") || "Ingen"}
 
-Gjør en kredittanalyse av dette firmaet for et factoringselskap som vurderer å inngå avtale med dem. Søk opp regnskapstall på proff.no, purehelp.no eller lignende. Skriv svaret som separate, klart merkede avsnitt (blank linje mellom hvert, ingen markdown-stjerner, kort ord/frase + kolon som start på hvert avsnitt), i denne rekkefølgen:
+Gjør en kredittanalyse av dette firmaet for et factoringselskap som vurderer å inngå avtale med dem. Søk opp regnskapstall på proff.no, purehelp.no eller lignende — bruk firmanavnet (og org.nr over, hvis oppgitt) i søket. Skriv svaret som separate, klart merkede avsnitt (blank linje mellom hvert, ingen markdown-stjerner, kort ord/frase + kolon som start på hvert avsnitt), i denne rekkefølgen:
 
 0. "Hurtigflagg:" — 2-4 korte linjer (hver på egen linje) som oppsummerer de VIKTIGSTE økonomiske funnene, i samme stil som disse eksemplene: "🚩 Egenkapitalandel falt til 6,8 % i 2025" / "▲ Omsetning svingende, ingen klar trend" / "✓ Jevn vekst i driftsinntekter siste 3 år" / "• Fant ingen regnskapstall nyere enn 2023". Start hver linje med nøyaktig ett av tegnene 🚩 (alvorlig bekymring), ▲ (noe å følge med på), ✓ (positivt), eller • (nøytral info/usikkerhet). Hver linje maks ca. 12 ord — dette er hurtigoversikt, ikke forklaring (forklaringen kommer i avsnittene under).
 1. "Omsetning og resultat:" — driftsinntekter og driftsresultat for så mange av de siste 3-5 regnskapsårene du finner, år for år. Vurder om trenden er vekst, nedgang eller stabil. Oppgi alltid hvilke år tallene gjelder.
@@ -80,7 +87,10 @@ export async function runAiHealthCheck(
   brreg: BrregData | null,
   ruleSummary: LeadSummary
 ): Promise<AiHealthCheckResult | null> {
-  if (!apiKey || !lead.org_number) return null;
+  // Org number is optional in the form — run this as long as there's a
+  // company name to search by (or an org number, or a name-resolved brreg
+  // match), not only when the lead typed an org number in themselves.
+  if (!apiKey || (!lead.org_number && !lead.company_name && !brreg)) return null;
 
   try {
     const client = new Anthropic({ apiKey });

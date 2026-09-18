@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { lookupBrreg } from "@/lib/brreg";
+import { lookupBrreg, searchBrregByName } from "@/lib/brreg";
 import { buildLeadSummary } from "@/lib/lead-summary";
 import { runAiHealthCheck } from "@/lib/ai-research";
 import { sendLeadNotification } from "@/lib/notify";
@@ -101,14 +101,19 @@ export async function POST(request: NextRequest) {
 
 /**
  * Runs once, when a lead is marked completed: looks up the org number in
- * Brønnøysundregisteret, builds a rule-based summary, asks Claude to search
- * the web for a financial health check, saves it all to the `research`
- * column, and emails the internal notification. Never lets a failure here
- * affect the lead save itself.
+ * Brønnøysundregisteret (falling back to a name search when the lead didn't
+ * give an org number — it's optional in the form), builds a rule-based
+ * summary, asks Claude to search the web for a financial health check,
+ * saves it all to the `research` column, and emails the internal
+ * notification. Never lets a failure here affect the lead save itself.
  */
 async function enrichAndNotify(lead: LeadRecord) {
   try {
-    const brreg = lead.org_number ? await lookupBrreg(lead.org_number) : null;
+    const brreg = lead.org_number
+      ? await lookupBrreg(lead.org_number)
+      : lead.company_name
+        ? await searchBrregByName(lead.company_name)
+        : null;
     const summary = buildLeadSummary(lead, brreg);
     const aiResult = await runAiHealthCheck(lead, brreg, summary);
 

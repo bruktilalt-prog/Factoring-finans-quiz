@@ -118,6 +118,17 @@ export default async function LeadDetailPage({
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
             <h2 className="font-semibold text-slate-900">Firmainfo (Brønnøysundregisteret)</h2>
             <dl className="mt-3 space-y-1.5 text-sm">
+              {!lead.org_number && (
+                <Row
+                  label="Org.nr"
+                  value={
+                    <>
+                      {research.brreg.organisasjonsnummer}{" "}
+                      <span className="text-slate-400">(funnet via navnesøk, ikke oppgitt av kunden)</span>
+                    </>
+                  }
+                />
+              )}
               <Row label="Organisasjonsform" value={research.brreg.organisasjonsform} />
               <Row label="Bransje" value={research.brreg.naeringskode} />
               <Row label="Stiftet" value={research.brreg.stiftelsesdato} />
