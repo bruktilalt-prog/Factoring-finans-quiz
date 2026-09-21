@@ -15,6 +15,7 @@ export interface Seller {
   name: string;
   email: string;
   territories: string[];
+  is_admin?: boolean;
   created_at?: string;
 }
 
@@ -57,8 +58,20 @@ export interface LeadRecord {
   research_completed_at?: string | null;
   handling_status?: HandlingStatus;
   assigned_to?: string | null;
+  follow_up_at?: string | null;
+  /** Estimated factoring frame in kr — AI-suggested on enrichment, always
+   *  editable afterwards. Never overwritten once set. */
+  estimated_frame_kr?: number | null;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface LeadNote {
+  id: string;
+  session_id: string;
+  seller_id: string;
+  body: string;
+  created_at: string;
 }
 
 /** Fields the quiz UI is allowed to write. Keeps the API route from accepting arbitrary columns. */

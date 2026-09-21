@@ -44,6 +44,10 @@ Gjør en kredittanalyse av dette firmaet for et factoringselskap som vurderer å
 4. "Samsvar med søknaden:" — stemmer det du fant (omsetning, størrelse, bransje) overens med det firmaet selv oppga i quizen (fakturavolum, kundetype, osv.)? Flagg eventuelle avvik eksplisitt som konkrete spørsmål selgeren bør stille i møte med kunden — ikke bare "sjekk dette", men formuler det som et spørsmål å stille.
 5. "Konklusjon:" — 2-3 setninger, rett på sak: er dette en solid kunde for factoring eller ikke, og hvorfor.
 
+Etter avsnitt 5, anslå i tillegg en passende factoring-ramme (kredittramme) for selskapet, i norske kroner. Tommelfingerregel: rammen tilsvarer typisk 1–1,5 ganger gjennomsnittlig MÅNEDLIG fakturavolum (ikke årsomsetning), justert opp ved lange betalingsfrister (mer kapital bundet i utestående fordringer samtidig) og ned ved korte. Bruk driftsinntekter du fant (årsomsetning / 12 som utgangspunkt for månedlig volum) sammenholdt med kundens oppgitte fakturavolum/mnd og betalingsfrister fra svarene over — legg mest vekt på det som virker mest realistisk og oppdatert. Eksempel: en bedrift med ca. 10 mill kr i årsomsetning ender typisk på en ramme rundt 1 mill kr. Rund av til nærmeste 50 000 kr. Skriv til slutt, som siste linje i svaret, helt alene og i nøyaktig dette formatet (ingen andre ord på linjen, ikke tusenskille-punktum):
+RAMME_ANSLAG: <heltall i kr>
+Hvis du ikke finner nok grunnlag til å anslå noe (verken regnskapstall eller oppgitt fakturavolum), skriv i stedet "RAMME_ANSLAG: ukjent" på den linjen.
+
 Prioriter det NYESTE regnskapsåret du finner treff på — sidene du henter kan vise eldre, cachede tall enn det som faktisk ligger ute, så nevn alltid eksplisitt hvilket år/periode tallene er fra. Hvis du ikke finner regnskapstall i det hele tatt, si det kort under "Hurtigflagg:" (med •) og "Omsetning og resultat:" i stedet for å gjette, men fyll fortsatt ut de andre avsnittene basert på det du har. Skriv på norsk, konsist og rett på sak — dette skal leses av travle folk i et salgsmøte, ikke være en lang rapport.`;
 }
 
@@ -66,6 +70,22 @@ function extractQuickFlags(rawText: string): { flags: string[]; rest: string } {
   return { flags, rest };
 }
 
+/** Pulls the trailing "RAMME_ANSLAG: <tall|ukjent>" line out of the raw
+ *  response text, returning the parsed kr amount (or null) and the text
+ *  with that line removed — it's a machine-readable marker, not meant to
+ *  be read by the sales rep. */
+function extractEstimatedFrame(text: string): { estimatedFrameKr: number | null; rest: string } {
+  const match = text.match(/\n?\s*RAMME_ANSLAG:\s*([^\n]*)\s*$/i);
+  if (!match) return { estimatedFrameKr: null, rest: text };
+
+  const raw = match[1].trim().toLowerCase();
+  const digits = raw.replace(/[^\d]/g, "");
+  const estimatedFrameKr = raw === "ukjent" || digits.length === 0 ? null : parseInt(digits, 10);
+
+  const rest = text.slice(0, match.index).trim();
+  return { estimatedFrameKr, rest };
+}
+
 export interface AiHealthCheckResult {
   /** Short emoji-prefixed lines meant to sit alongside the quiz-based flags
    *  under "Vurdering" — the quick, skimmable version. */
@@ -73,6 +93,9 @@ export interface AiHealthCheckResult {
   /** The full long-form analysis (5 sections), for the "Kreditt-helsesjekk
    *  (AI)" block. */
   analysis: string;
+  /** AI-suggested factoring frame in kr, rounded to nearest 50k — a
+   *  starting point only, always editable per lead once set. */
+  estimatedFrameKr: number | null;
 }
 
 /**
@@ -153,8 +176,9 @@ export async function runAiHealthCheck(
       return null;
     }
 
-    const { flags, rest } = extractQuickFlags(text);
-    return { flags, analysis: rest };
+    const { estimatedFrameKr, rest: withoutFrame } = extractEstimatedFrame(text);
+    const { flags, rest } = extractQuickFlags(withoutFrame);
+    return { flags, analysis: rest, estimatedFrameKr };
   } catch (err) {
     console.error("AI health check failed", err);
     return null;

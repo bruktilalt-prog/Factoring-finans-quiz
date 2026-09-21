@@ -1,17 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_SESSION_COOKIE, checkPassword, getExpectedSessionToken } from "@/lib/admin-auth";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { ADMIN_SESSION_COOKIE, createSessionToken } from "@/lib/admin-auth";
+import { verifyPassword } from "@/lib/password";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
+  const email = body?.email;
   const password = body?.password;
 
-  if (typeof password !== "string" || !checkPassword(password)) {
-    return NextResponse.json({ error: "Feil passord" }, { status: 401 });
+  if (typeof email !== "string" || typeof password !== "string") {
+    return NextResponse.json({ error: "E-post og passord er påkrevd" }, { status: 400 });
   }
 
-  const token = await getExpectedSessionToken();
+  const { data: seller } = await supabaseAdmin
+    .from("sellers")
+    .select("id, password_hash")
+    .ilike("email", email.trim())
+    .maybeSingle();
+
+  if (!seller?.password_hash || !(await verifyPassword(password, seller.password_hash))) {
+    return NextResponse.json({ error: "Feil e-post eller passord" }, { status: 401 });
+  }
+
+  const token = await createSessionToken(seller.id);
   if (!token) {
-    return NextResponse.json({ error: "ADMIN_PASSWORD er ikke satt på serveren" }, { status: 500 });
+    return NextResponse.json({ error: "Serverfeil: mangler SESSION_SECRET/ADMIN_PASSWORD" }, { status: 500 });
   }
 
   const res = NextResponse.json({ ok: true });

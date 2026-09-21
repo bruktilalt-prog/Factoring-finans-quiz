@@ -6,6 +6,7 @@ import Logo from "@/components/Logo";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,12 +19,13 @@ export default function AdminLoginPage() {
     const res = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ email, password }),
     });
 
     if (!res.ok) {
       setLoading(false);
-      setError("Feil passord");
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Feil e-post eller passord");
       return;
     }
 
@@ -44,17 +46,24 @@ export default function AdminLoginPage() {
         >
           <h1 className="mb-6 text-xl font-bold text-slate-900">Logg inn</h1>
           <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="E-post"
+            autoFocus
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+          />
+          <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Passord"
-            autoFocus
-            className="w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+            className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
           />
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
           <button
             type="submit"
-            disabled={loading || password.length === 0}
+            disabled={loading || email.length === 0 || password.length === 0}
             className="mt-4 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {loading ? "Logger inn..." : "Logg inn"}

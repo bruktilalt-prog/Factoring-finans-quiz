@@ -129,6 +129,11 @@ async function enrichAndNotify(lead: LeadRecord) {
       .update({
         research: { brreg, summary: combinedSummary, aiHealthCheck: aiResult?.analysis ?? null },
         research_completed_at: new Date().toISOString(),
+        // Only pre-fills the AI's suggestion — never overwrites a value a
+        // seller may already have set manually.
+        ...(lead.estimated_frame_kr == null && aiResult?.estimatedFrameKr != null
+          ? { estimated_frame_kr: aiResult.estimatedFrameKr }
+          : {}),
       })
       .eq("session_id", lead.session_id);
 

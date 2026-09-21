@@ -15,7 +15,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Ugyldig body" }, { status: 400 });
   }
 
-  const update: Partial<Pick<LeadRecord, "handling_status" | "assigned_to">> = {};
+  const update: Partial<
+    Pick<LeadRecord, "handling_status" | "assigned_to" | "follow_up_at" | "estimated_frame_kr">
+  > = {};
 
   if ("handling_status" in body) {
     if (!VALID_STATUSES.includes(body.handling_status)) {
@@ -29,6 +31,20 @@ export async function PATCH(
       return NextResponse.json({ error: "Ugyldig assigned_to" }, { status: 400 });
     }
     update.assigned_to = body.assigned_to;
+  }
+
+  if ("follow_up_at" in body) {
+    if (body.follow_up_at !== null && typeof body.follow_up_at !== "string") {
+      return NextResponse.json({ error: "Ugyldig follow_up_at" }, { status: 400 });
+    }
+    update.follow_up_at = body.follow_up_at;
+  }
+
+  if ("estimated_frame_kr" in body) {
+    if (body.estimated_frame_kr !== null && typeof body.estimated_frame_kr !== "number") {
+      return NextResponse.json({ error: "Ugyldig estimated_frame_kr" }, { status: 400 });
+    }
+    update.estimated_frame_kr = body.estimated_frame_kr;
   }
 
   if (Object.keys(update).length === 0) {
@@ -51,7 +67,7 @@ export async function PATCH(
   if (update.assigned_to) {
     const { data: seller } = await supabaseAdmin
       .from("sellers")
-      .select("*")
+      .select("id, name, email, territories, is_admin")
       .eq("id", update.assigned_to)
       .maybeSingle();
     if (seller) {

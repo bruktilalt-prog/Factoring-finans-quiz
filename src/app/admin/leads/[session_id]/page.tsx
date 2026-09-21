@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { buildLeadSummary } from "@/lib/lead-summary";
 import LeadActions from "@/components/admin/LeadActions";
-import { HANDLING_STATUS_LABELS, type LeadRecord, type Seller } from "@/lib/types";
+import LeadNotes from "@/components/admin/LeadNotes";
+import { formatKr } from "@/lib/format";
+import { HANDLING_STATUS_LABELS, type LeadNote, type LeadRecord, type Seller } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +33,28 @@ export default async function LeadDetailPage({
 
   const { data: sellersData } = await supabaseAdmin
     .from("sellers")
-    .select("*")
+    .select("id, name, email, territories, is_admin")
     .order("name", { ascending: true });
   const sellers = (sellersData ?? []) as Seller[];
+
+  const orgNumber = lead.org_number || research?.brreg?.organisasjonsnummer || null;
+  let duplicates: Pick<LeadRecord, "session_id" | "company_name" | "created_at">[] = [];
+  if (orgNumber) {
+    const { data: dupeData } = await supabaseAdmin
+      .from("leads")
+      .select("session_id, company_name, created_at")
+      .eq("org_number", orgNumber)
+      .neq("session_id", session_id);
+    duplicates = (dupeData ?? []) as Pick<LeadRecord, "session_id" | "company_name" | "created_at">[];
+  }
+
+  const { data: notesData } = await supabaseAdmin
+    .from("lead_notes")
+    .select("*")
+    .eq("session_id", session_id)
+    .order("created_at", { ascending: false });
+  const notes = (notesData ?? []) as LeadNote[];
+  const sellerNames = new Map(sellers.map((s) => [s.id, s.name]));
 
   // Computed live from whatever fields are filled in so far — not only for
   // completed leads. This is what the visitor has actually answered, with
@@ -73,12 +94,45 @@ export default async function LeadDetailPage({
             </span>
           </div>
         </div>
-        <p className="text-sm text-slate-500">Mottatt {formatDate(lead.created_at)}</p>
+        <p className="text-sm text-slate-500">
+          Mottatt {formatDate(lead.created_at)}
+          {lead.estimated_frame_kr != null && (
+            <>
+              {" "}
+              · Anslått ramme:{" "}
+              <span className="font-medium text-slate-700">{formatKr(lead.estimated_frame_kr)}</span>
+            </>
+          )}
+        </p>
+
+        {duplicates.length > 0 && (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-800">
+              ⚠ Samme org.nr finnes på {duplicates.length} annen{duplicates.length > 1 ? "e" : ""} lead
+              {duplicates.length > 1 ? "s" : ""}:
+            </p>
+            <ul className="mt-2 space-y-1 text-sm">
+              {duplicates.map((d) => (
+                <li key={d.session_id}>
+                  <Link
+                    href={`/admin/leads/${d.session_id}`}
+                    className="text-amber-900 underline hover:text-amber-700"
+                  >
+                    {d.company_name || "Ukjent firma"}
+                  </Link>{" "}
+                  <span className="text-amber-700">({formatDate(d.created_at)})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <LeadActions
           sessionId={lead.session_id}
           handlingStatus={lead.handling_status ?? "new"}
           assignedTo={lead.assigned_to ?? null}
+          followUpAt={lead.follow_up_at ?? null}
+          estimatedFrameKr={lead.estimated_frame_kr ?? null}
           sellers={sellers}
         />
 
@@ -222,6 +276,11 @@ export default async function LeadDetailPage({
             />
           </dl>
         </section>
+
+        <LeadNotes
+          sessionId={lead.session_id}
+          initialNotes={notes.map((n) => ({ ...n, sellerName: sellerNames.get(n.seller_id) ?? "Ukjent" }))}
+        />
       </div>
     </main>
   );

@@ -1,16 +1,24 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getCurrentSeller } from "@/lib/current-seller";
 import Logo from "@/components/Logo";
 import LogoutButton from "@/components/admin/LogoutButton";
 import AddSellerForm from "@/components/admin/AddSellerForm";
+import SellersTable from "@/components/admin/SellersTable";
 import type { Seller } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function SellersPage() {
+  const currentSeller = await getCurrentSeller();
+  if (!currentSeller?.is_admin) {
+    redirect("/admin");
+  }
+
   const { data, error } = await supabaseAdmin
     .from("sellers")
-    .select("*")
+    .select("id, name, email, territories, is_admin, created_at")
     .order("created_at", { ascending: true });
 
   const sellers = (data ?? []) as Seller[];
@@ -20,7 +28,10 @@ export default async function SellersPage() {
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
           <Logo />
-          <LogoutButton />
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-500">{currentSeller.name}</span>
+            <LogoutButton />
+          </div>
         </div>
 
         <Link href="/admin" className="text-sm font-medium text-slate-500 hover:text-slate-700">
@@ -34,34 +45,8 @@ export default async function SellersPage() {
           </p>
         )}
 
-        <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Navn</th>
-                <th className="px-4 py-3 font-medium">E-post</th>
-                <th className="px-4 py-3 font-medium">Områder</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sellers.map((seller) => (
-                <tr key={seller.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-medium text-slate-900">{seller.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{seller.email}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {seller.territories.length > 0 ? seller.territories.join(", ") : "—"}
-                  </td>
-                </tr>
-              ))}
-              {sellers.length === 0 && !error && (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-slate-400">
-                    Ingen selgere lagt til ennå.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mb-6">
+          <SellersTable sellers={sellers} currentSellerId={currentSeller.id} />
         </div>
 
         <AddSellerForm />
