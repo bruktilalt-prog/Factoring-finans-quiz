@@ -6,6 +6,7 @@ import SingleChoiceStep from "@/components/steps/SingleChoiceStep";
 import MultiChoiceStep from "@/components/steps/MultiChoiceStep";
 import ContactFormStep, { ContactFormValues } from "@/components/steps/ContactFormStep";
 import MeetingTimeStep from "@/components/steps/MeetingTimeStep";
+import LiquidityEstimateSection from "@/components/LiquidityEstimateSection";
 import { QUIZ_STEPS, TOTAL_STEPS } from "@/lib/quiz-config";
 import { getOrCreateSessionId, getUtmParams, SESSION_STORAGE_KEY } from "@/lib/session";
 import type { LeadAnswers, LeadRecord } from "@/lib/types";
@@ -197,9 +198,12 @@ export default function QuizFunnel() {
         </div>
         <h2 className="text-2xl font-semibold text-slate-900">Takk, vi har mottatt svarene dine</h2>
         <p className="mt-2 text-slate-500">
-          Vi tar kontakt med et uforpliktende tilbud på factoring så snart vi har sett gjennom
-          opplysningene.
+          En rådgiver hos oss tar kontakt for å avtale et møte, så snart vi har gått gjennom
+          opplysningene dine.
         </p>
+
+        <LiquidityEstimateSection answers={answers} />
+
         <button
           type="button"
           onClick={() => {
